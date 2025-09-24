@@ -54,3 +54,14 @@ class XORShift(PRNG):
         rand_val |= 1 << (k - 1)
 
         return rand_val
+
+
+if __name__ == "__main__":
+    xorshift = XORShift(seed=12345)
+    print("10 números pseudo-aleatórios gerados pelo XORShift:")
+    for _ in range(10):
+        print(xorshift.next())
+
+    print("\nNúmeros pseudo-aleatórios com 10 bits:")
+    for _ in range(10):
+        print(bin(xorshift.randbits(10)))
