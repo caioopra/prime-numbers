@@ -56,4 +56,4 @@ if __name__ == "__main__":
 
     print("\nNúmeros pseudo-aleatórios com 10 bits:")
     for _ in range(10):
-        print(bin(lcg.randbits(10)))
+        print(bin(lcg.randbits(4096)))
