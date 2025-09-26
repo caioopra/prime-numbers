@@ -422,17 +422,57 @@ Os resultados obtidos estão sumarizados na Tabela \ref{tab:prime_discovery}. A 
 \subsubsection{Análise dos Resultados}
 Os resultados indicam que ambos os testes de primalidade foram eficazes em identificar números primos para todos os tamanhos de bits testados. No entanto, o tempo necessário para encontrar o primeiro primo aumentou significativamente com tamanho dos números, refletindo a complexidade crescente do problema. Como esperado, os tempos de execução para encontrar um primo são muito semelhantes para ambos os algoritmos. Isso ocorre porque o custo computacional de uma única iteração de cada teste é dominado pela operação de exponenciação modular, que é idêntica em ambos os casos. A complexidade teórica se reflete nos dados empíricos, onde o tempo de execução aumenta drasticamente com número de bits. A dificuldade crescente em encontrar primos maiores também se deve à sua menor densidade, conforme previsto pelo Teorema dos Números Primos, que afirma que a probabilidade de um número aleatório N ser primo é aproximadamente $\frac{1}{\ln(N)}$. \parencite{wikipedia_numero_primo}
 
+\subsubsection{Análise de Robustez e Correção}
 
-% --- BIBLIOGRAFIA ---
+A análise de desempenho por si só é enganosa, pois não revela a diferença fundamental entre os dois testes. A verdadeira distinção reside na sua robustez. Para demonstrar isso empiricamente, foi realizado um experimento direcionado, testando ambos os algoritmos com números conhecidos por serem casos problemáticos para o Teste de Fermat.
 
+O enunciado do trabalho sugere o uso de pseudoprimos. A escolha do Teste de Fermat permite um teste ainda mais contundente: o uso de Números de Carmichael. Fontes como a \textit{On-Line Encyclopedia of Integer Sequences} (OEIS) e o MathWorld fornecem listas desses números. Os primeiros são 561, 1105 e 1729.
+
+Para demonstrar adequadamente a vulnerabilidade do Teste de Fermat, foi implementado um experimento específico que testa os números de Carmichael usando apenas bases coprimas com o número candidato. Este cenário representa o caso mais desfavorável para o Teste de Fermat, onde sua vulnerabilidade teórica se manifesta na prática.
+
+Os resultados obtidos com o experimento implementado em \texttt{carmichael\_test.py} demonstram inequivocamente a falha teórica do Teste de Fermat:
+
+\begin{itemize}
+    \item Para o número 561 = $3 \times 11 \times 17$:
+    \begin{itemize}
+        \item \texttt{fermat\_test} (bases aleatórias, k=20): \textbf{False} (detecta corretamente como composto)
+        \item \texttt{fermat\_test} (apenas bases coprimas, k=20): \textbf{True} (falha - classifica como primo)
+        \item \texttt{miller\_rabin\_test} (k=20): \textbf{False} (detecta corretamente como composto)
+    \end{itemize}
+
+    \item Resultados similares foram obtidos para 1105 = $5 \times 13 \times 17$ e 1729 = $7 \times 13 \times 19$.
+\end{itemize}
+
+Este resultado prático é uma demonstração inequívoca da falha teórica do Teste de Fermat. Quando testado apenas com bases coprimas, ele classifica incorretamente os números compostos de Carmichael como "provavelmente primo" porque, para essas bases, a congruência $a^{n-1} \equiv 1 \pmod{n}$ é sempre satisfeita. Por outro lado, o Teste de Miller-Rabin identifica corretamente todos os números de Carmichael como compostos.
+
+É importante notar que na implementação padrão do Teste de Fermat com bases aleatórias, a probabilidade de escolher uma base coprima diminui conforme o número tem mais fatores pequenos. Para 561, as bases não coprimas incluem todos os múltiplos de 3, 11 e 17, representando uma fração significativa do espaço de busca. Isso explica por que o teste com bases aleatórias frequentemente detecta 561 como composto, mas não elimina a vulnerabilidade teórica fundamental.
+
+Esta vulnerabilidade torna o Teste de Fermat inadequado para aplicações criptográficas que exigem alta confiança. O Teste de Miller-Rabin, com sua probabilidade de erro garantida de no máximo $(1/4)^k$, oferece o nível de segurança necessário. Para $k=20$ iterações, a probabilidade de um número composto ser classificado como primo é inferior a 1 em $10^{12}$, um nível de confiança mais do que suficiente para a maioria das aplicações práticas.
+
+
+\section{Conclusão}
+
+Este trabalho realizou uma análise teórica e empírica de algoritmos para a geração de números pseudo-aleatórios e para a verificação de primalidade, duas etapas fundamentais na construção de sistemas criptográficos modernos. A implementação e a avaliação do Gerador Linear Congruencial (LCG), do Xorshift, do Teste de Miller-Rabin e do Teste de Fermat com inteiros de até 4096 bits permitiram extrair conclusões significativas sobre o compromisso entre desempenho, complexidade teórica e robustez prática.
+
+Na geração de números pseudo-aleatórios, os resultados experimentais revelaram uma inversão de desempenho notável em relação às expectativas teóricas. Embora o Xorshift seja projetado para ser mais rápido por utilizar operações bitwise de baixo custo, o LCG demonstrou ser mais performático para números de grande magnitude no ambiente Python. Esta discrepância foi atribuída à implementação nativa altamente otimizada da aritmética de precisão arbitrária ("bignum") do Python, que beneficia diretamente as operações de multiplicação e módulo do LCG, em contraste com a sobrecarga computacional da emulação de operações bitwise em inteiros tão grandes. No que tange à qualidade, ambos os geradores foram aprovados com sucesso em uma bateria de testes estatísticos básicos, mostrando-se adequados para a geração de números candidatos. 
+
+Na verificação de primalidade, a análise comparativa entre o Teste de Miller-Rabin e o Teste de Fermat confirmou que o desempenho de ambos é praticamente idêntico, visto que o custo computacional de ambos é dominado pela operação de exponenciação modular.  Contudo, a diferença crucial e fundamental reside na robustez. O experimento direcionado com números de Carmichael demonstrou inequivocamente a vulnerabilidade teórica do Teste de Fermat, que classificou incorretamente um número composto como primo sob condições específicas. Em contrapartida, o Teste de Miller-Rabin provou sua superioridade ao identificar corretamente a composição em todos os cenários.
+
+Em suma, o estudo evidencia que, enquanto a performance de algoritmos pode variar de acordo com o ambiente de implementação de maneiras não triviais, a robustez teórica é um critério inegociável para aplicações de segurança. O Teste de Miller-Rabin, com sua confiabilidade matemática garantida, reafirma-se como a escolha indispensável para a criptografia, ao passo que a seleção de um PRNG deve ponderar a velocidade teórica do algoritmo frente às otimizações da plataforma de implementação.
+
+
+% --- BIBLIOGRAFIA --- 
+
+\newpage
 
 \printbibliography
 
+\newpage
 \appendix
 \section{Apêndice A - Código Fonte}
 \label{app-a}
 
-O código fonte para o trabalho, assim como os experimentos realizados e testes, pode ser encontrado no repositório público no GitHub, disponível em: https://github.com/prime-numbers
+O código fonte para o trabalho, assim como os experimentos realizados e testes, pode ser encontrado no repositório público no GitHub, disponível em: \url{https://github.com/caioopra/prime-numbers}
 
 \end{document}
 
