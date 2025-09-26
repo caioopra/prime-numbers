@@ -1,0 +1,438 @@
+\documentclass[a4paper, 11pt]{article}
+
+% --- PACOTES ---
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{ragged2e}
+\usepackage{graphicx}
+\usepackage{booktabs} 
+\usepackage{threeparttable}
+\usepackage{graphicx} 
+\usepackage{siunitx}
+\sisetup{round-mode=none}
+\usepackage{adjustbox}
+
+
+\usepackage[T1]{fontenc}
+\usepackage{csquotes}
+
+\usepackage[backend=biber, style=authoryear, citestyle=authoryear]{biblatex}
+\DeclareDelimFormat{nameyeardelim}{\addcomma\space}
+\setlength{\bibitemsep}{1em}
+\addbibresource{bibliografia.bib}
+
+% --- CONFIGURAÇÕES DO DOCUMENTO ---
+\geometry{a4paper, margin=1in}
+\hypersetup{
+    colorlinks=true,   
+    citecolor=black,   
+    linkcolor=black,
+    urlcolor=blue 
+}
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0.5em}
+
+\begin{document}
+\begin{titlepage}
+
+    \noindent\includegraphics[width=0.22\textwidth]{ufsc.png}\par
+    \vspace{0.5cm}
+    
+    \centering
+    \textbf{Universidade Federal de Santa Catarina - UFSC}\\
+    Departamento de Informática e Estatística (INE)\\
+    Disciplina INE5429 - Segurança em Computação\\[0.5cm]
+    Caio Prá Silva (21203773)\\
+    
+    \vfill
+    
+    \centering
+    {\bfseries\Large
+    Relatório Trabalho Individual - Números primos\par}
+    
+    \vfill 
+    
+    \centering
+    \textbf{Professores:} Prof. Jean Everson Martina e Prof$^{a}$. Thaís Bardini Idalino\\[0.3cm]
+    
+    \centering
+    \textbf{Florianópolis, SC}\\
+    \textbf{2025}
+    
+\end{titlepage}
+
+% --- SEÇÃO 1 ---
+\section{Introdução}
+
+\subsection{Motivação e Fundamentação Teórica}
+
+A segurança da informação na era digital é amplamente sustentada por protocolos criptográficos robustos, muitos dos quais dependem fundamentalmente de conceitos da teoria dos números. No centro de grande parte da criptografia de chave pública moderna, como o sistema RSA (Rivest-Shamir-Adleman), reside a utilização de números primos de grande magnitude. \parencite{rsa-aes} A segurança destes sistemas deriva da assimetria computacional entre a facilidade de multiplicar dois números primos grandes e a extrema dificuldade de fatorar o seu produto.  Para aplicações práticas, como a assinatura digital de documentos eletrônicos no Brasil, são exigidas chaves criptográficas geradas a partir de números primos com bits ou mais, uma dimensão que impõe desafios computacionais significativos. \parencite{iti_doc_icp_01_01}
+
+O processo de obtenção de um número primo de grande porte para uso criptográfico é tipicamente decomposto em duas tarefas sequenciais e interdependentes. A primeira consiste na geração de um número candidato, que deve ser um inteiro ímpar de magnitude apropriada e possuir características de aleatoriedade para evitar ataques preditivos. A segunda tarefa é a verificação da primalidade deste candidato, um processo que deve ser tanto eficiente quanto confiável, dado que um teste incorreto poderia comprometer toda a segurança do sistema criptográfico subsequente. Esta decomposição do problema evidencia a necessidade de se dispor de algoritmos eficientes e robustos para ambas as etapas: a geração de números pseudo-aleatórios e o teste de primalidade.
+
+O processo de obtenção de um número primo de grande porte para uso criptográfico é tipicamente decomposto em duas tarefas sequenciais e interdependentes. A primeira consiste na geração de um número candidato, que deve ser um inteiro ímpar de magnitude apropriada e possuir características de aleatoriedade para evitar ataques preditivos. A segunda tarefa é a verificação da primalidade deste candidato, um processo que deve ser tanto eficiente quanto confiável, dado que um teste incorreto poderia comprometer toda a segurança do sistema criptográfico subsequente. Esta decomposição do problema evidencia a necessidade de se dispor de algoritmos eficientes e robustos para ambas as etapas: a geração de números pseudo-aleatórios e o teste de primalidade.
+
+\subsection{Objetivos}
+Este relatório tem como objetivo principal conduzir uma análise teórica e empírica de algoritmos selecionados para cada uma dessas tarefas, com foco particular na sua aplicação a inteiros de precisão arbitrária, capazes de atingir os 4096 bits exigidos pelo escopo do trabalho. Para a geração de números pseudo-aleatórios, serão implementados e comparados o Gerador Linear Congruente (LCG) \parencite{lehmer1951}, um método clássico baseado em aritmética modular, e o gerador Xorshift \parencite{xorshift-def}, uma abordagem moderna otimizada para operações a nível de bit. Para a verificação de primalidade, o trabalho implementará o Teste de Miller-Rabin \parencite{miller1976, rabin1980}, um padrão da indústria e requisito obrigatório, e o comparará com Teste de Fermat \parencite{solovay1977}, um precursor historicamente importante cujas limitações teóricas oferecem um contraponto valioso para a análise. A análise comparativa abrangerá o desempenho computacional (tempo de execução), a complexidade assintótica e a robustez dos algoritmos, avaliando a qualidade estatística dos geradores e a correção dos testes de primalidade.
+
+\subsection{Considerações sobre Aritmética de Múltipla Precisão}
+
+O requisito de gerar números de até 4096 bits  excede em muito a capacidade dos tipos de dados inteiros nativos da maioria das linguagens de programação, como int (32 bits) ou long long (64 bits) em C/C++. A manipulação de números dessa magnitude requer o uso de aritmética de precisão arbitrária, comumente conhecida como "\textit{bignum}" \parencite{oshiro2020how_python_bignum}. 
+
+Para este trabalho, a linguagem de programação Python foi escolhida devido ao seu suporte nativo e transparente a inteiros de precisão arbitrária. Em Python, o tipo int pode representar números de qualquer tamanho, limitado apenas pela memória disponível no sistema. Essa característica abstrai a complexidade do gerenciamento de memória e da implementação de operações aritméticas para números grandes, permitindo que o foco permaneça na lógica dos algoritmos de PRNG e primalidade. É importante notar que, embora conveniente, a implementação de \textit{bignum} nativa do Python pode não ser a mais performática. Para aplicações de alta performance em ambientes de produção, bibliotecas especializadas escritas em C/C++, como a GNU Multiple Precision Arithmetic Library (GMP) \parencite{gmp} , a Crypto++  ou a \textit{s2n-bignum} da \textit{AWS} \parencite{awslabs_s2n_bignum} , ofereceriam um desempenho superior. O Python pode interagir com bibliotecas através de wrappers como o gmpy2 , que combina a facilidade do Python com velocidade do C. No entanto, para o escopo deste trabalho, o desempenho do Python nativo é suficiente e a simplicidade que ele oferece é uma vantagem significativa.
+
+% --- SEÇÃO 2 ---
+\section{Geração de Números Pseudo-Aleatórios (\textit{PRNGs})}
+
+A geração de números pseudo-aleatórios (\textit{Pseudo-Random Number Generators} - \textit{PRNG}) é o primeiro passo crítico no processo de encontrar um primo grande para fins criptográficos. A qualidade do \textit{PRNG} é fundamental; uma sequência previsível pode permitir que um adversário restrinja o espaço de busca de chaves, comprometendo a segurança do sistema. Nesta seção, dois algoritmos com de projeto distintas são explorados: o Gerador Linear Congruencial (\textit{linear congruential generator} - \textit{LCG}), que se baseia em aritmética modular, e o Xorshift, que utiliza operações \textit{bitwise}.
+
+\subsection{Gerador Linear Congruencial - \textit{LCG}}
+\label{sub-lcg}
+
+O Gerador Linear Congruencial é um dos algoritmos de PRNG mais antigos e estudados na computação. Sua popularidade histórica deve-se à sua simplicidade de implementação e à sua velocidade em hardware que suporta nativamente a aritmética modular \parencite{wikipedia_lcg}. A operação do LCG é definida pela seguinte relação de recorrência:
+\begin{equation}
+    X_{n+1} = (a \cdot X_n +c) \quad (mod \; m)
+\end{equation}
+\begin{flushleft}
+    onde:
+    \begin{itemize}
+        \item \textbf{$X_n$} \textit{é o n-ésimo} número da sequência pseudo-aleatória;
+        \item \textbf{$X_0$} é a "semente" (\textit{seed}), o valor inicial que define toda a sequência subsequente;
+        \item \textbf{$a$} é o "multiplicador" $\,(0 < a< m)$;
+        \item \textbf{$c$} é o "incremento" $\,(0 < c< m)$;
+        \item \textbf{$m$} é o "módulo" $\,(m>0)$, que define o intervalo dos números gerados, $[0, m-1]$.
+    \end{itemize}
+\end{flushleft}
+
+A qualidade de um gerador \textit{LCG} é muito sensível à escolha de seus parâmetros. Para que o gerador atinja seu período máximo, é necessário que:
+
+\begin{enumerate}
+    \item c e m devem ser coprimos
+    \item $a-1$ deve ser múltiplo de todo fator primo de m
+    \item $a-1$ deve ser múltiplo de 4 se m for múltiplo de 4
+\end{enumerate}
+
+A história da computação está repleta de exemplos onde a escolha inadequada de parâmetros levou a geradores com falhas estatísticas. Um caso notório é o \textit{RANDU} \parencite{ibm1968randu}, um LCG amplamente utilizado na década de 1970, cujos parâmetros resultavam em uma forte correlação entre valores sucessivos, invalidando muitas simulações científicas que o utilizaram. \parencite{marsaglia1968}
+
+\subsection{Gerador Xorshift}
+
+Os geradores Xorshift, introduzidos por \cite{JSSv008i14}, representam uma classe de \textit{PRNGs} que se destacam pela sua simplicidade e velocidade excepcional em implementações de software. Eles pertencem à família mais ampla de registradores de deslocamento com linear (LFSRs), mas são projetados para serem particularmente eficientes em arquiteturas de computadores modernas, que executam operações \textit{bitwise} (a nível de bit) em poucos ciclos de \textit{clock}. \parencite{wikipedia_xorshift}
+
+O mecanismo central do Xorshift consiste em gerar o próximo número de uma sequência aplicando repetidamente a operação "ou exclusivo" (XOR, denotada por $\oplus$) a um estado interno com versão deslocada de si mesmo. Uma implementação típica de 32 bits, por exemplo, pode seguir a forma:
+
+$$x = x \,\oplus\, (x << a);$$
+$$x = x \,\oplus\, (x >> b);$$
+$$x = x \,\oplus\, (x << c);$$
+
+\begin{flushleft}
+    onde $x$ é o estado do gerador (inteiro de 32 bits), $<<$ e $>>$ são as operações de deslocamento de bits para a esquerda e para a direita, respectivamente, e $a$, $b$ e $c$ são constantes de deslocamento escolhidas. A escolha de tais parâmetros é crucial para garantir maior periodicidade para o gerador, bem como garantir a ele boas propriedades estatísticas.
+\end{flushleft}
+
+Embora os geradores Xorshift puros sejam extremamente rápidos, eles podem falhar em baterias de testes estatísticos mais rigorosas, como o BigCrush. Para mitigar essa fraqueza, foram propostas variações que combinam a saída do Xorshift com função não-linear. As variantes mais comuns incluem xorshift*, que aplica uma multiplicação modular, e xorshift+, que utiliza uma adição, melhorando significativamente a qualidade estatística da sequência gerada. Para os propósitos deste trabalho, a implementação da versão pura do Xorshift é suficiente e oferece um excelente ponto de comparação com LCG, destacando o \textit{trade-off} entre complexidade aritmética e operações bitwise. \parencite{vigna_xorshift_prng}
+
+\subsection{Implementação e Metodologia Experimental}
+
+A implementação e a experimentação foram projetadas para avaliar os algoritmos no contexto de números inteiros de grande porte, conforme exigido pelas aplicações criptográficas modernas.
+
+\subsubsection{Configuração Experimental}
+\label{sec:config-exp}
+
+Os experimentos foram conduzidos em um sistema com seguintes especificações:
+\begin{itemize}
+    \item \textbf{CPU:} Intel Core i5-11400H @ 2.70GHz
+    \item \textbf{RAM:} 16 GB
+    \item \textbf{SO:} Ubuntu 22.04
+    \item \textbf{Versão Python:} 3.10.12
+\end{itemize}
+
+Para medir o desempenho, foi utilizada a biblioteca \textit{\textbf{time}} do Python, especificamente com método perf\_counter \parencite{python_time_perf_counter}, para medições de tempo mais precisas durante as múltiplas execuções de código, minimizando a influência de flutuações do sistema. Conforme sugerido na especificação do trabalho, usou-se tamanho de bits: 40, 56, 80, 128, 168, 224, 256, 512, 1024, 2048, 4096. Foram gerados 16 valores para cada quantidade de dígitos binários, com mínimo, máximo e médio de geração, bem como desvio padrão e os tempos individuais.
+
+Especificamente para o algoritmo LCG, foram usados os parâmetros baseados na implementação ANSI C \parencite{saucier2000computer}:
+\begin{itemize}
+    \item m = $2^{32}$
+    \item a = $1103515245$
+    \item c = $12345$
+\end{itemize}
+
+\subsubsection{Experimentos}
+
+Considerando os tamanhos de bits mencionados e demais especificações, usando o código disponível no GitHub (Apêndice \ref{app-a}), obteve-se os resultados sumarizados na Tabela \ref{tab:tempos1} e Tabela \ref{tab:tempos2}.
+
+\begin{table}[h!] \centering \begin{threeparttable} \caption{Resultados de desempenho do LCG} \label{tab:tempos1} \begin{tabular}{|c|c|c|c|c|} \hline \textbf{N bits} & \textbf{Tempo médio (ms)} & \textbf{Tempo mín (ms)} & \textbf{Tempo máx (ms)} & \textbf{Desvio padrão (ms)} \\ \hline 40 & 0.001994 & 0.001058 & 0.009855 & 0.002345 \\ \hline 56 & 0.001103 & 0.001023 & 0.001547 & 0.000126 \\ \hline 80 & 0.001389 & 0.001319 & 0.001821 & 0.000123 \\ \hline 128 & 0.001720 & 0.001642 & 0.002125 & 0.000112 \\ \hline 168 & 0.002301 & 0.002205 & 0.002741 & 0.000125 \\ \hline 224 & 0.002625 & 0.002547 & 0.003072 & 0.000123 \\ \hline 256 & 0.002914 & 0.002845 & 0.003270 & 0.000101 \\ \hline 512 & 0.005495 & 0.005277 & 0.006719 & 0.000345 \\ \hline 1024 & 0.010003 & 0.009270 & 0.012404 & 0.000877 \\ \hline 2048 & 0.019950 & 0.018419 & 0.034388 & 0.004017 \\ \hline 4096 & 0.042365 & 0.039881 & 0.049948 & 0.003641 \\ \hline \end{tabular} \begin{tablenotes} \small \item Os valores representam a média, mínimo, máximo e desvio padrão de 16 execuções independentes para cada tamanho de chave. \end{tablenotes} \end{threeparttable} \end{table} \begin{table}[h!] \centering \begin{threeparttable} \caption{Resultados de desempenho do Xorshift} \label{tab:tempos2} \begin{tabular}{|c|c|c|c|c|} \hline \textbf{N bits} & \textbf{Tempo médio (sm)} & \textbf{Tempo mín (sm)} & \textbf{Tempo máx (sm)} & \textbf{Desvio padrão (sm)} \\ \hline 40 & 0.001710 & 0.001400 & 0.004229 & 0.000694 \\ \hline 56 & 0.001480 & 0.001373 & 0.002104 & 0.000171 \\ \hline 80 & 0.001846 & 0.001719 & 0.002383 & 0.000163 \\ \hline 128 & 0.002676 & 0.002164 & 0.005172 & 0.000974 \\ \hline 168 & 0.003205 & 0.003046 & 0.003900 & 0.000206 \\ \hline 224 & 0.003624 & 0.003495 & 0.004421 & 0.000225 \\ \hline 256 & 0.005018 & 0.003886 & 0.017319 & 0.003329 \\ \hline 512 & 0.010519 & 0.008000 & 0.014765 & 0.002494 \\ \hline 1024 & 0.015297 & 0.013844 & 0.022194 & 0.002086 \\ \hline 2048 & 0.029532 & 0.027508 & 0.036664 & 0.002539 \\ \hline 4096 & 0.060360 & 0.058132 & 0.081999 & 0.005983 \\ \hline \end{tabular} \begin{tablenotes} \small \item Os valores representam a média, mínimo, máximo e desvio padrão de 16 execuções independentes para cada tamanho de chave. \end{tablenotes} \end{threeparttable} \end{table}
+
+\subsubsection{Análise dos Resultados}
+
+Em ambos os algoritmos, pode-se perceber que, conforme o número de bits aumenta, ou seja, aumenta-se a complexidade, o desempenho tende a piorar. De forma geral, ambos desempenham similarmente para números menores, aproximadamente até 256 bits, com na casa dos microssegundos e praticamente desprezíveis; entretanto, a diferença é mais notável a partir de 512 bits, no qual o tempo do Xorshift começa a crescer em taxa mais notável que o do LCG, sendo o último o que melhor desempenhou para o caso de 4096 bits.
+
+A diferença na execução dos algoritmos, ainda que com computacional bastante semelhante, possui pontos que tornam o LCG mais performático em arquiteturas de CPUs modernas. Ainda que o Xorshift utilize operações \textit{bitwise}, que individualmente são mais rápidas, acumulam \textit{overhead} por outros pontos do algoritmo, como um estado com variáveis que pode resultar em mais \textit{cache miss}, além de essas operações serem mais difíceis de serem otimizadas em conjunto, bem como possui mais operações por ciclo de cálculo. Enquanto isso, o LCG usa operações de adição, módulo e multiplicação, que se beneficiam de otimizações de CPU, além de ter acesso a memória mais previsível. Somado a isso, o LCG possui complexidade assintótica com mais baixas, tornando no longo prazo o algoritmo mais eficiente para números grandes.
+
+De forma geral, pode-se destacar para cada algoritmo:
+
+\begin{itemize}
+    \item \textbf{LCG}
+    \begin{itemize}
+        \item Pontos positivos:
+        \begin{enumerate}
+            \item Melhor desempenho com grandes: A implementação se mostrou mais rápida que o Xorshift para números de 512 bits ou mais. Isso ocorre porque a linguagem Python possui suporte nativo e otimizado para aritmética de precisão arbitrária ("bignum"). As operações de multiplicação e adição em números muito grandes são altamente eficientes nessa implementação, o que favorece diretamente o LCG.
+            \item Simplicidade de Implementação: O algoritmo é conceitualmente simples e direto de ser implementado.
+        \end{enumerate}
+        \item Pontos negativos:
+        \begin{enumerate}
+            \item Qualidade estatística: A qualidade dos valores gerados é extremamente sensível à escolha dos parâmetros iniciais, como tratado na subseção \ref{sub-lcg}. Uma escolha inadequada pode levar a correlações e padrões nos números gerados.
+        \end{enumerate}
+    \end{itemize}
+
+    \item \textbf{Xorshift} 
+    \begin{itemize}
+        \item Pontos positivos:
+        \begin{enumerate}
+            \item Velocidade teórica: O algoritmo é projetado para ser excepcionalmente mais rápido em hardware que executa operações bitwise em poucos ciclos de clock, especialmente números inteiros de tamanho nativo (como 64 bits).
+            \item Boas propriedades estatísticas: o algoritmo e suas variantes podem passar por rigorosas baterias de testes estatísticos
+        \end{enumerate}
+
+        \item Pontos negativos:
+        \begin{enumerate}
+            \item Baixo Desempenho com" em Python: O ponto fraco da implementação foi seu desempenho inferior com grandes. A razão é que as operações bitwise (como << ou \^) não são executadas em um único ciclo de máquina em inteiros de 4096 bits. Em Python, essas operações são emuladas sobre uma estrutura de dados que representa o número grande, o que acarreta uma sobrecarga computacional significativa e acaba sendo mais lento do que as operações aritméticas otimizadas do LCG para a mesma escala de número.
+        \end{enumerate}
+    \end{itemize}
+\end{itemize}
+
+\subsection{Avaliação Estatística da Qualidade dos PRNGs}
+
+Para uma avaliação completa da qualidade dos geradores implementados, foi desenvolvida
+uma bateria de testes estatísticos específicos para PRNGs. Esta avaliação é crucial
+pois, em aplicações criptográficas, a qualidade estatística da sequência
+pseudo-aleatória afeta diretamente a segurança do sistema. Os testes implementados
+seguem metodologias reconhecidas na literatura e incluem verificações de
+reprodutibilidade, distribuição de bits, uniformidade estatística e detecção de
+correlações.
+
+\subsubsection{Metodologia dos Testes Estatísticos}
+
+Os testes estatísticos foram organizados em quatro categorias principais:
+
+\begin{enumerate}
+    \item \textbf{Testes Básicos}: Verificação de reprodutibilidade (mesma seed produz
+mesma sequência) e balanceamento de bits (proporção próxima a 50\% para cada posição de
+bit).
+
+    \item \textbf{Testes de Formato}: Validação do método \texttt{randbits(k)} para
+diferentes valores de k (1, 4, 8, 16, 32, 64 bits), verificando se os números gerados
+possuem o formato correto com bit mais significativo sempre igual a 1.
+
+    \item \textbf{Testes Estatísticos}:
+    \begin{itemize}
+        \item \textbf{Teste Chi-Quadrado}: Avalia a uniformidade da distribuição
+dividindo o espaço [0,1) em 100 intervalos e testando se a frequência observada difere
+significativamente da esperada. O valor crítico utilizado foi 124,342 (99 graus de
+liberdade, $\alpha$ = 0,05).
+        \item \textbf{Teste de Runs}: Converte a sequência em valores binários
+(acima/abaixo da mediana) e conta o número de "runs" (sequências consecutivas de 0s ou
+1s). Usa estatística z com de confiança de 95\%.
+        \item \textbf{Teste de Correlação Serial}: Calcula o coeficiente de correlação
+de Pearson entre valores consecutivos da sequência (lag=1) para detectar dependências
+lineares.
+    \end{itemize}
+
+    \item \textbf{Teste de Período}: Tentativa de detectar repetições no estado interno
+do gerador, fundamental para avaliar o período efetivo.
+\end{enumerate}
+
+\subsubsection{Resultados dos Testes Estatísticos}
+
+Os experimentos foram conduzidos com fixa (12345) e amostra de 10.000 valores para
+os testes estatísticos. Os resultados obtidos estão sumarizados na Tabela
+\ref{tab:statistical_tests}.
+
+\begin{table}[h!]
+\centering
+\begin{threeparttable}
+\caption{Resultados dos testes estatísticos para os PRNGs implementados}
+\label{tab:statistical_tests}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Teste} & \textbf{LCG} & \textbf{XORShift} \\
+\hline
+\multicolumn{3}{|c|}{\textit{Testes Básicos}} \\
+\hline
+Reprodutibilidade & X & X \\
+Balanceamento de Bits & X & X \\
+\hline
+\multicolumn{3}{|c|}{\textit{Testes de Formato (randbits)}} \\
+\hline
+1, 4, 8, 16, 32, 64 bits & X (todos) & X (todos) \\
+\hline
+\multicolumn{3}{|c|}{\textit{Testes Estatísticos}} \\
+\hline
+Chi-Quadrado & X (123,200) & X (93,640) \\
+Teste de Runs & X (512 runs) & X (517 runs) \\
+Correlação Serial & X (-0,033) & X (-0,017) \\
+\hline
+\multicolumn{3}{|c|}{\textit{Teste de Período}} \\
+\hline
+Detecção de Período & Não detectado* & Não detectado* \\
+\hline
+\multicolumn{3}{|c|}{\textit{Avaliação Geral}} \\
+\hline
+Taxa de Sucesso & 100\% (11/11) & 100\% (11/11) \\
+Status & Excelente & Excelente \\
+\hline
+\end{tabular}
+\begin{tablenotes}
+\small
+\item * Período não encontrado nas primeiras 100.000 iterações, indicando período longo.
+\item Os valores entre parênteses representam as estatísticas calculadas para cada
+teste.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\subsubsection{Análise dos Resultados Estatísticos}
+
+Ambos os geradores demonstraram excelente desempenho nos testes estatísticos
+implementados, aprovando em todos os 11 testes realizados. Esta performance indica que,
+do ponto de vista da qualidade estatística básica, tanto o LCG quanto o XORShift são
+adequados para a geração de candidatos a números primos.
+
+\textbf{Análise por categoria de teste:}
+
+\begin{itemize}
+    \item \textbf{Uniformidade}: O teste chi-quadrado mostrou que ambos os geradores
+produzem distribuições estatisticamente uniformes. O XORShift apresentou valor
+ligeiramente melhor (93,640) comparado ao LCG (123,200), ambos bem abaixo do valor
+crítico de 124,342.
+
+    \item \textbf{Independência}: Os testes de runs e correlação serial confirmaram
+ausência de padrões óbvios nas sequências geradas. Os coeficientes de correlação serial
+próximos a zero (-0,033 para LCG e -0,017 para XORShift) indicam baixa dependência
+linear entre valores consecutivos.
+
+    \item \textbf{Período}: Nenhum dos geradores apresentou repetição de estado nas
+primeiras 100.000 iterações, sugerindo períodos longos adequados para as aplicações
+pretendidas.
+\end{itemize}
+
+É importante ressaltar que, embora estes resultados sejam encorajadores, os testes
+implementados representam apenas uma avaliação básica da qualidade estatística. Para
+aplicações criptográficas críticas, seria recomendável submeter os geradores a baterias
+de testes mais rigorosas, com testes estatísticos mais sofisticados e que
+são capazes de detectar deficiências sutis que podem não ser aparentes em análises mais
+simples.
+
+\section{Verificação de Primalidade}
+
+Após a geração de um número candidato, a segunda etapa consiste em determinar eficientemente se ele é primo. Dada a magnitude dos números envolvidos, métodos determinísticos como a divisão por tentativa são computacionalmente inviáveis. A solução reside no uso de testes de primalidade probabilísticos, que oferecem um equilíbrio entre velocidade e uma probabilidade de erro controlável e extremamente baixa.
+
+\subsection{Testes de Primalidade de Miller-Rabin}
+
+O Teste de Miller-Rabin é um dos algoritmos de primalidade probabilísticos mais eficientes e amplamente utilizados na prática, sendo um padrão em bibliotecas criptográficas. A versão original, proposta por Gary Miller em 1976, era determinística, mas sua correção dependia da Hipótese de Riemann Generalizada, que permanece não provada. Em 1980, Michael Rabin modificou o algoritmo para uma versão probabilística incondicional, que é a forma utilizada hoje. \parencite{rabin1980}
+
+O teste é uma sofisticação do Teste de Fermat e se baseia em duas propriedades fundamentais dos números primos ímpares n: \parencite{kleinberg2010miller}
+\begin{enumerate}
+    \item \textbf{Pequeno Teorema de Fermat}: para qualquer inteiro $a$ tal que $1 < a < n-1$, a congruência $a^{n-1} \equiv 1 \;(mod \,n)$ é válida.
+    \item \textbf{Raízes quadradas das Unidades}: as únicas soluções para a equação $x^2 \equiv 1 \; (mod \, n)$ são $x \equiv -1 \; (mod \, n)$ e $x \equiv -1 \; (mod \, n)$. Se for encontrada outra raíz quadrada de 1 ("raíz quadrada não trivial"), então n é garantidamente composto. \parencite{wikipedia_miller_rabin}
+\end{enumerate}
+
+O algoritmo de Miller-Rabin combina essas duas propriedades de forma engenhosa. Para testar um número ímpar n, primeiro decompõe-se $n-1$ na forma $2^s \cdot d$, onde d é ímpar. Em seguida, escolhe-se um inteiro aleatório a no intervalo $[2, n-2]$, chamado "base" ou "testemunha". O número n passa no teste para a base "a" se uma das condições sejam satisfeitas:
+\begin{itemize}
+    \item $a^d \equiv1 \; (mod \, n)$
+    \item $a^{2^r \cdot d} \equiv -1 \; (mod \, n)$ para algum $r$ no intervalo $0 \leq r < s$.
+\end{itemize}
+
+Se n for primo, ele passará no teste para qualquer base a. Se n for composto, ele passará no teste para no máximo 1/4 das bases possíveis. Os números a para os quais um n composto passa no teste são chamados de "mentirosos fortes" (strong liars). Ao repetir o teste k vezes com aleatórias independentes, a probabilidade de que um número composto seja incorretamente classificado como primo é de no máximo $(1/4)^k$. Este erro pode ser tornado arbitrariamente pequeno aumentando o número de iterações k, tornando o teste extremamente confiável para aplicações criptográficas. 
+
+\subsection{Teste de Primalidade de Fermat}
+
+A escolha do Teste de Fermat como segundo método para comparação é deliberada. Sua simplicidade conceitual e, mais importante, sua falha teórica bem conhecida, servem como um excelente contraponto para ilustrar a robustez e a superioridade do Teste de Miller-Rabin.
+
+
+O teste baseia-se diretamente e unicamente no Pequeno Teorema de Fermat. Para testar um número n, escolhe-se um uma base aleatória $a$ (com < a < n-1) e verifica-se a congruência $a^{n-1} \equiv 1 \; (mod \, n)$. \parencite{ma2014fermat}
+
+\begin{itemize}
+    \item Se $a^{n-1} \not\equiv 1 \; (mod \, n)$, então a é uma "testemunha de Fermat" para a composição de n, e n é definitivamente composto.
+    \item Se $a^{n-1} \equiv 1 \; (mod \, n)$, então n é "provavelmente primo" para a base a e a é uma "mentirosa de Fermat".
+\end{itemize}
+
+principal fraqueza do Teste de Fermat é a existência de números compostos que são mentirosos para todas as bases a que são coprimas com. Esses números são chamados de Números de Carmichael. O menor deles é 561 = $3 \cdot 11 \cdot 17$. Para qualquer a coprimo com, a congruência $a^{560} \equiv 1 \; (mod \, 561)$ é satisfeita, fazendo com o teste falhe em detectar a composição de 561. \parencite{wikipedia_pequeno_teorema_fermat}. Como existem infinitos números de Carmichael, o Teste de Fermat não pode ser usado como um teste de primalidade de propósito geral confiável. Em contraste, o Teste de Miller-Rabin foi projetado especificamente para detectar a composição de números como os de Carmichael, explorando a propriedade das raízes quadradas não triviais da unidade.
+
+\subsection{Implementação e Metodologia Experimental}
+A implementação e experimentação dos testes de primalidade foram projetadas para avaliar os algoritmos no contexto de números inteiros de grande porte, conforme exigido pelas aplicações criptográficas modernas.
+
+\subsubsection{Código Fonte e Metodologia}
+
+Os experimentos foram conduzidos com mesmo hardware e demais especificações da seção \ref{sec:config-exp}. Os testes foram também implementados em Python, com fonte disponível no GitHub (Apêndice \ref{app-a}). A metodologia experimental consistiu em:
+\begin{itemize}
+    \item Para cada tamanho de bits (40, 56, 80, 128, 168, 224, 256, 512, 1024, 2048, 4096), utilizou-se o PRNG LCG para gerar números candidatos.
+    \item Cada candidato foi testado por ambos algoritmos de primalidade, Miller-Rabin com=20 iterações e Fermat com=20 bases aleatórias.
+    \item O processo continua, gerando e testando novos candidates até que o primeiro número primo seja encontrado por um dos testes.
+    \item O tempo total decorrido para encontrar o primeiro primo, bem como o número de candidatos testados, foram registrados.
+\end{itemize}
+
+\subsubsection{Experimentos}
+
+Os resultados obtidos estão sumarizados na Tabela \ref{tab:prime_discovery}. A tabela apresennta o tempo total decorrido para encontrar o primeiro número primo, o número de candidatos testados, e se cada teste (Miller-Rabin, Fermat ou ambos) conseguiu identificar corretamente o primo.
+
+\begin{table}[h!]
+    \centering
+    \begin{threeparttable}
+    \caption{Resultados do experimento de descoberta de números primos}
+    \label{tab:prime_discovery}
+    \begin{tabular}{|c|c|c|c|c|c|}
+    \hline
+    \textbf{N bits} & \textbf{Tempo (ms)} & \textbf{Candidatos} & \textbf{Miller-Rabin} &
+    \textbf{Fermat} & \textbf{Ambos} \\
+    \hline
+    40 & 0.234154 & 3 & Sim & Sim & Sim \\
+    \hline
+    56 & 1.734929 & 103 & Sim & Sim & Sim \\
+    \hline
+    80 & 0.863268 & 17 & Sim & Sim & Sim \\
+    \hline
+    128 & 10.825385 & 160 & Sim & Sim & Sim \\
+    \hline
+    168 & 5.039106 & 37 & Sim & Sim & Sim \\
+    \hline
+    224 & 7.976166 & 31 & Sim & Sim & Sim \\
+    \hline
+    256 & 29.520978 & 130 & Sim & Sim & Sim \\
+    \hline
+    512 & 39.746970 & 18 & Sim & Sim & Sim \\
+    \hline
+    1024 & 485.609992 & 60 & Sim & Sim & Sim \\
+    \hline
+    2048 & 12817.833151 & 322 & Sim & Sim & Sim \\
+    \hline
+    4096 & 76543.884109 & 276 & Sim & Sim & Sim \\
+    \hline
+    \end{tabular}
+    \begin{tablenotes}
+    \small
+    \item Tempo decorrido para encontrar o primeiro número primo usando LCG para geração de
+    candidatos ímpares e testes de Miller-Rabin e Fermat (k=20). Seed fixo: 42.
+    \end{tablenotes}
+    \end{threeparttable}
+    \end{table}
+  
+
+\subsubsection{Análise dos Resultados}
+Os resultados indicam que ambos os testes de primalidade foram eficazes em identificar números primos para todos os tamanhos de bits testados. No entanto, o tempo necessário para encontrar o primeiro primo aumentou significativamente com tamanho dos números, refletindo a complexidade crescente do problema. Como esperado, os tempos de execução para encontrar um primo são muito semelhantes para ambos os algoritmos. Isso ocorre porque o custo computacional de uma única iteração de cada teste é dominado pela operação de exponenciação modular, que é idêntica em ambos os casos. A complexidade teórica se reflete nos dados empíricos, onde o tempo de execução aumenta drasticamente com número de bits. A dificuldade crescente em encontrar primos maiores também se deve à sua menor densidade, conforme previsto pelo Teorema dos Números Primos, que afirma que a probabilidade de um número aleatório N ser primo é aproximadamente $\frac{1}{\ln(N)}$. \parencite{wikipedia_numero_primo}
+
+
+% --- BIBLIOGRAFIA ---
+
+
+\printbibliography
+
+\appendix
+\section{Apêndice A - Código Fonte}
+\label{app-a}
+
+O código fonte para o trabalho, assim como os experimentos realizados e testes, pode ser encontrado no repositório público no GitHub, disponível em: https://github.com/prime-numbers
+
+\end{document}
+
