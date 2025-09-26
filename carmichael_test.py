@@ -1,17 +1,41 @@
 from primalidade import fermat_test, miller_rabin_test
 
 
-def gcd(a, b):
-    """Calcula o máximo divisor comum"""
+def gcd(a: int, b: int) -> int:
+    """
+    Calcula o máximo divisor comum usando o algoritmo de Euclides.
+
+    Args:
+        a (int): primeiro número
+        b (int): segundo número
+
+    Returns:
+        int: máximo divisor comum de a e b
+    """
     while b:
         a, b = b, a % b
     return a
 
 
-def fermat_test_coprime_bases(n, k=20):
+def fermat_test_coprime_bases(n: int, k: int = 20) -> bool:
     """
     Teste de Fermat usando apenas bases coprimas com n.
-    Esta versão demonstra a vulnerabilidade dos números de Carmichael.
+
+    Esta versão específica demonstra a vulnerabilidade fundamental do teste de Fermat
+    para números de Carmichael. Um número de Carmichael é um número composto n tal que
+    a^(n-1) ≡ 1 (mod n) para todo inteiro a coprimo com n.
+
+    Diferenças da versão padrão:
+    - Só testa bases que são coprimas com n (gcd(a,n) = 1)
+    - Garante que todos os números de Carmichael passarão no teste
+    - Demonstra por que o teste de Fermat não é confiável
+
+    Args:
+        n (int): número a ser testado para primalidade
+        k (int): número de bases coprimas a serem testadas (padrão: 20)
+
+    Returns:
+        bool: False se n é composto, True se provavelmente primo (ou Carmichael)
     """
     if n <= 1:
         return False
@@ -20,7 +44,7 @@ def fermat_test_coprime_bases(n, k=20):
     if n % 2 == 0:
         return False
 
-    # Encontra k bases coprimas com n
+    # encontra k bases coprimas com n, começando de 2
     coprime_bases = []
     candidate = 2
     while len(coprime_bases) < k and candidate < n:
@@ -28,20 +52,30 @@ def fermat_test_coprime_bases(n, k=20):
             coprime_bases.append(candidate)
         candidate += 1
 
-    # Se não encontramos k bases coprimas, o número provavelmente é muito pequeno
+    # se não encontramos bases coprimas suficientes, n é muito pequeno ou tem muitos fatores
     if len(coprime_bases) < k:
         return False
 
-    # Testa cada base coprima
+    # aplica o teste de Fermat para cada base coprima
     for base in coprime_bases:
         if pow(base, n - 1, n) != 1:
-            return False
+            return False  # encontrou uma testemunha, n é composto
 
     return True
 
 
-def test_carmichael_vulnerability():
-    """Demonstra a vulnerabilidade do teste de Fermat para números de Carmichael"""
+def test_carmichael_vulnerability() -> None:
+    """
+    Demonstra a vulnerabilidade do teste de Fermat para números de Carmichael.
+
+    Testa três números de Carmichael conhecidos (561, 1105, 1729) usando:
+    1. Teste de Fermat com bases aleatórias (pode ocasionalmente detectar composição)
+    2. Teste de Fermat com bases coprimas (sempre falhará em detectar composição)
+    3. Teste de Miller-Rabin (detectará corretamente que são compostos)
+
+    Os números de Carmichael são a razão pela qual o teste de Fermat
+    não é considerado um teste de primalidade confiável.
+    """
 
     carmichael_numbers = [561, 1105, 1729]
 
